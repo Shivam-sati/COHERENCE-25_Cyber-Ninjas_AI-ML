@@ -1,0 +1,12 @@
+flask==3.0.2
+flask-cors==4.0.0
+# python-magic==0.4.27  # Optional: Required only for MIME type detection on Unix-like systems
+Werkzeug==3.0.1
+python-dotenv==1.0.1
+gunicorn==21.2.0
+pytest==8.0.2
+black==24.2.0
+flake8==7.0.0
+python-docx==1.1.0
+PyPDF2==3.0.1
+watchdog==3.0.0 
