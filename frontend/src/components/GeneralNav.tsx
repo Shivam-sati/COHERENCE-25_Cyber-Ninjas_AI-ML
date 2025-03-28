@@ -46,24 +46,24 @@ export function GeneralNav() {
   };
 
   return (
-    <nav className="border-t">
-      <div className="flex items-center justify-around h-[60px] px-2">
+    <nav className="hidden md:block border-b">
+      <div className="flex items-center justify-center gap-4 h-14 max-w-screen-xl mx-auto px-4">
         {routes.map((route) => (
           <Link
             key={route.href}
             to={route.href}
             className={cn(
-              "flex flex-col items-center justify-center flex-1 h-full text-[10px] font-medium transition-colors",
+              "flex items-center gap-2 px-4 py-2 rounded-lg transition-all hover:bg-accent",
               isActive(route.href)
-                ? "text-primary"
+                ? "text-primary bg-accent"
                 : "text-muted-foreground hover:text-foreground"
             )}
           >
             {route.icon}
-            <span className="mt-0.5">{route.name}</span>
+            <span>{route.name}</span>
           </Link>
         ))}
       </div>
     </nav>
   );
-} 
+}

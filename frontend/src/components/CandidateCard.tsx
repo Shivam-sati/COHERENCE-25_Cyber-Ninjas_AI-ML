@@ -1,8 +1,8 @@
-
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Calendar, Mail, User } from "lucide-react";
+import { Link } from "react-router-dom";
 
 interface CandidateCardProps {
   candidate: {
@@ -102,8 +102,10 @@ export function CandidateCard({ candidate }: CandidateCardProps) {
         </div>
         
         <div className="mt-4 flex gap-2">
-          <Button variant="outline" size="sm" className="w-full rounded-full">
-            View Profile
+          <Button variant="outline" size="sm" className="w-full rounded-full" asChild>
+            <Link to={`/candidates/${candidate.id}`}>
+              View Profile
+            </Link>
           </Button>
           <Button size="sm" className="w-full rounded-full bg-gradient-primary hover:opacity-90">
             <Calendar className="h-4 w-4 mr-1" />

@@ -52,24 +52,24 @@ export function BottomNav() {
   };
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-t md:hidden">
-      <div className="flex items-center justify-around h-16">
+    <nav className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[9999] w-[95%] max-w-3xl">
+      <div className="flex items-center justify-around h-16 px-6 bg-card/90 backdrop-blur-xl rounded-2xl border border-border/50 shadow-lg dark:bg-card/80 dark:border-border/30">
         {routes.map((route) => (
           <Link
             key={route.href}
             to={route.href}
             className={cn(
-              "flex flex-col items-center justify-center flex-1 h-full text-xs font-medium transition-colors",
+              "flex flex-col items-center justify-center px-4 py-2 rounded-xl transition-all",
               isActive(route.href)
-                ? "text-primary"
-                : "text-muted-foreground hover:text-foreground"
+                ? "text-primary bg-primary/10 dark:bg-primary/15"
+                : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
             )}
           >
             {route.icon}
-            <span className="mt-1">{route.name}</span>
+            <span className="mt-1 text-xs font-medium">{route.name}</span>
           </Link>
         ))}
       </div>
     </nav>
   );
-} 
+}

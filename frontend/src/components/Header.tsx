@@ -39,7 +39,9 @@ export function Header() {
   return (
     <header className={cn(
       "fixed top-0 left-0 right-0 z-50 transition-all duration-300",
-      isScrolled ? "bg-background/95 backdrop-blur-md shadow-sm" : "bg-background/80 backdrop-blur-md"
+      isScrolled 
+        ? "bg-card/90 backdrop-blur-xl shadow-sm border-b border-border/30 dark:bg-card/80" 
+        : "bg-background/70 backdrop-blur-lg"
     )}>
       <div className="container mx-auto px-4">
         <div className="flex h-16 items-center justify-between">
@@ -51,7 +53,7 @@ export function Header() {
               >
                 <BriefcaseIcon className="h-6 w-6 text-primary mr-2" />
               </motion.div>
-              <span className="font-bold text-xl bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+              <span className="font-bold text-xl bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
                 ResumeScreener
               </span>
             </Link>
