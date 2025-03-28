@@ -1,58 +1,69 @@
-# Next.js 14 Project
+# Welcome to your Lovable project
 
-A modern Next.js 14 project with TypeScript, TailwindCSS, and a custom design system.
+## Project info
 
-## Features
+**URL**: https://lovable.dev/projects/5016d6ed-47b0-4028-8aa5-b6511ec3c4de
 
-- Next.js 14 with App Router
-- TypeScript with strict type checking
-- TailwindCSS with custom design system
-- Dark/Light mode support
-- ESLint and Prettier configuration
-- Modern component architecture
-- Type-safe utilities
+## How can I edit this code?
 
-## Getting Started
+There are several ways of editing your application.
 
-1. Clone the repository
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-3. Create a `.env` file based on `.env.example`
-4. Run the development server:
-   ```bash
-   npm run dev
-   ```
+**Use Lovable**
 
-## Project Structure
+Simply visit the [Lovable Project](https://lovable.dev/projects/5016d6ed-47b0-4028-8aa5-b6511ec3c4de) and start prompting.
 
-```
-src/
-├── app/              # App router pages and layouts
-├── components/       # React components
-│   ├── ui/          # Reusable UI components
-│   └── ...          # Feature-specific components
-├── lib/             # Utility functions and shared logic
-└── styles/          # Global styles and TailwindCSS configuration
-```
+Changes made via Lovable will be committed automatically to this repo.
 
-## Development
+**Use your preferred IDE**
 
-- `npm run dev` - Start development server
-- `npm run build` - Build for production
-- `npm run start` - Start production server
-- `npm run lint` - Run ESLint
-- `npm run format` - Format code with Prettier
+If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
 
-## Environment Variables
+The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
 
-Copy `.env.example` to `.env` and update the values as needed:
+Follow these steps:
 
-```env
-NEXT_PUBLIC_APP_URL=http://localhost:3000
+```sh
+# Step 1: Clone the repository using the project's Git URL.
+git clone <YOUR_GIT_URL>
+
+# Step 2: Navigate to the project directory.
+cd <YOUR_PROJECT_NAME>
+
+# Step 3: Install the necessary dependencies.
+npm i
+
+# Step 4: Start the development server with auto-reloading and an instant preview.
+npm run dev
 ```
 
-## License
+**Edit a file directly in GitHub**
 
-MIT
+- Navigate to the desired file(s).
+- Click the "Edit" button (pencil icon) at the top right of the file view.
+- Make your changes and commit the changes.
+
+**Use GitHub Codespaces**
+
+- Navigate to the main page of your repository.
+- Click on the "Code" button (green button) near the top right.
+- Select the "Codespaces" tab.
+- Click on "New codespace" to launch a new Codespace environment.
+- Edit files directly within the Codespace and commit and push your changes once you're done.
+
+## What technologies are used for this project?
+
+This project is built with .
+
+- Vite
+- TypeScript
+- React
+- shadcn-ui
+- Tailwind CSS
+
+## How can I deploy this project?
+
+Simply open [Lovable](https://lovable.dev/projects/5016d6ed-47b0-4028-8aa5-b6511ec3c4de) and click on Share -> Publish.
+
+## I want to use a custom domain - is that possible?
+
+We don't support custom domains (yet). If you want to deploy your project under your own domain then we recommend using Netlify. Visit our docs for more details: [Custom domains](https://docs.lovable.dev/tips-tricks/custom-domain/)
