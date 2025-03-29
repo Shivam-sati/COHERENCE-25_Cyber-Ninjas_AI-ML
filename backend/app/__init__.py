@@ -15,10 +15,16 @@ def create_app():
     
     # Configure logging
     if not os.path.exists('logs'):
-        os.mkdir('logs')
-    file_handler = RotatingFileHandler('logs/app.log', maxBytes=10240, backupCount=10)
+        os.makedirs('logs')
+    
+    # Use a different logging configuration for Windows
+    if os.name == 'nt':  # Windows
+        file_handler = logging.FileHandler('logs/app.log', mode='a', encoding='utf-8')
+    else:  # Unix/Linux
+        file_handler = RotatingFileHandler('logs/app.log', maxBytes=10240, backupCount=10)
+    
     file_handler.setFormatter(logging.Formatter(
-        '%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'
+        '[%(asctime)s] %(levelname)s in %(module)s: %(message)s'
     ))
     file_handler.setLevel(logging.INFO)
     app.logger.addHandler(file_handler)

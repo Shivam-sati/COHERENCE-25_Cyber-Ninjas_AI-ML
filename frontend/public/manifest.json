@@ -1,11 +1,11 @@
 {
-  "name": "ResumeScreener",
-  "short_name": "ResumeScreener",
-  "description": "AI-Powered Resume Screening Platform",
+  "name": "Resume Analyzer",
+  "short_name": "Resume Analyzer",
+  "description": "AI-powered resume analysis and candidate matching system",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
-  "theme_color": "#4361EE",
+  "theme_color": "#000000",
   "icons": [
     {
       "src": "/icon-192x192.png",
@@ -18,4 +18,4 @@
       "type": "image/png"
     }
   ]
-} 
+}
