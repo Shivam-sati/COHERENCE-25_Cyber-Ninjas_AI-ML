@@ -42,10 +42,29 @@ export function LeaderboardTable({ candidates }: LeaderboardTableProps) {
     return "text-gray-400";
   };
 
-  // Safely get the first character of the filename
+  // Format filename to display name
+  const formatName = (filename: string) => {
+    try {
+      // Remove file extension and replace underscores with spaces
+      const nameWithoutExt = filename.replace(/\.[^/.]+$/, "");
+      const formattedName = nameWithoutExt
+        .replace(/_/g, " ")
+        .split(" ")
+        .map(
+          (word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+        )
+        .join(" ");
+      return formattedName;
+    } catch (error) {
+      console.error("Error formatting name:", error);
+      return filename;
+    }
+  };
+
+  // Safely get the first character of the formatted name
   const getInitial = (filename: string) => {
     try {
-      return filename.charAt(0).toUpperCase();
+      return formatName(filename).charAt(0).toUpperCase();
     } catch (error) {
       console.error("Error getting initial:", error);
       return "?";

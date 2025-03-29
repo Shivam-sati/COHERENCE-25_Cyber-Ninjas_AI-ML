@@ -15,10 +15,29 @@ export function CandidateCard({
   onSelect,
   selected,
 }: CandidateCardProps) {
-  // Safely get the first character of the filename
+  // Format filename to display name
+  const formatName = (filename: string) => {
+    try {
+      // Remove file extension and replace underscores with spaces
+      const nameWithoutExt = filename.replace(/\.[^/.]+$/, "");
+      const formattedName = nameWithoutExt
+        .replace(/_/g, " ")
+        .split(" ")
+        .map(
+          (word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+        )
+        .join(" ");
+      return formattedName;
+    } catch (error) {
+      console.error("Error formatting name:", error);
+      return filename;
+    }
+  };
+
+  // Safely get the first character of the formatted name
   const getInitial = (filename: string) => {
     try {
-      return filename.charAt(0).toUpperCase();
+      return formatName(filename).charAt(0).toUpperCase();
     } catch (error) {
       console.error("Error getting initial:", error);
       return "?";
@@ -53,6 +72,8 @@ export function CandidateCard({
     }
   };
 
+  const formattedName = formatName(candidate.filename);
+
   return (
     <Card
       className={`p-4 cursor-pointer transition-all hover:shadow-md ${
@@ -69,7 +90,7 @@ export function CandidateCard({
           </div>
           <div>
             <div className="font-semibold truncate max-w-[200px]">
-              {candidate.filename}
+              {formattedName}
             </div>
             <div className="text-sm text-muted-foreground">
               {formatEmail(candidate.email)}
