@@ -29,9 +29,7 @@ const App = () => {
         <BrowserRouter>
           <div className="min-h-screen bg-background flex flex-col">
             <Header />
-            <main className={cn(
-              "flex-1 container mx-auto px-4 pb-24"
-            )}>
+            <main className={cn("flex-1 container mx-auto px-4 pb-24")}>
               <Routes>
                 <Route path="/" element={<Index />} />
                 <Route path="/dashboard" element={<Dashboard />} />

@@ -1,9 +1,23 @@
-
 import React from "react";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import { Award, ChevronUp, ChevronDown, Medal, Star, Trophy, Users } from "lucide-react";
+import {
+  Award,
+  ChevronUp,
+  ChevronDown,
+  Medal,
+  Star,
+  Trophy,
+  Users,
+} from "lucide-react";
 
 interface Candidate {
   id: string;
@@ -24,7 +38,9 @@ interface LeaderboardTableProps {
 
 export function LeaderboardTable({ candidates }: LeaderboardTableProps) {
   // Sort candidates by match score in descending order
-  const rankedCandidates = [...candidates].sort((a, b) => b.matchScore - a.matchScore);
+  const rankedCandidates = [...candidates].sort(
+    (a, b) => b.matchScore - a.matchScore
+  );
 
   // Function to render the rank icon/badge
   const getRankIndicator = (rank: number) => {
@@ -41,7 +57,10 @@ export function LeaderboardTable({ candidates }: LeaderboardTableProps) {
   };
 
   // Function to render trend indicator
-  const getTrendIndicator = (trend?: "up" | "down" | "neutral", previousRank?: number) => {
+  const getTrendIndicator = (
+    trend?: "up" | "down" | "neutral",
+    previousRank?: number
+  ) => {
     if (trend === "up") {
       return (
         <div className="flex items-center text-green-500 text-xs">
@@ -70,7 +89,9 @@ export function LeaderboardTable({ candidates }: LeaderboardTableProps) {
           </div>
           <div className="flex items-center gap-2">
             <Users className="h-5 w-5" />
-            <span className="text-sm font-medium">{candidates.length} Candidates</span>
+            <span className="text-sm font-medium">
+              {candidates.length} Candidates
+            </span>
           </div>
         </div>
       </div>
@@ -86,8 +107,8 @@ export function LeaderboardTable({ candidates }: LeaderboardTableProps) {
         </TableHeader>
         <TableBody>
           {rankedCandidates.map((candidate, index) => (
-            <TableRow 
-              key={candidate.id} 
+            <TableRow
+              key={candidate.id}
               className={`
                 ${index < 3 ? "bg-primary/5" : ""}
                 hover:bg-primary/5 transition-colors
@@ -95,14 +116,21 @@ export function LeaderboardTable({ candidates }: LeaderboardTableProps) {
             >
               <TableCell className="relative p-4">
                 <div className="flex flex-col items-center">
-                  <div className={`
+                  <div
+                    className={`
                     flex items-center justify-center w-10 h-10 rounded-full 
-                    ${index === 0 ? "bg-yellow-100 text-yellow-600" : 
-                      index === 1 ? "bg-gray-100 text-gray-600" : 
-                      index === 2 ? "bg-amber-100 text-amber-600" : 
-                      "bg-primary/10 text-primary"} 
+                    ${
+                      index === 0
+                        ? "bg-yellow-100 text-yellow-600"
+                        : index === 1
+                        ? "bg-gray-100 text-gray-600"
+                        : index === 2
+                        ? "bg-amber-100 text-amber-600"
+                        : "bg-primary/10 text-primary"
+                    } 
                     shadow-sm
-                  `}>
+                  `}
+                  >
                     {getRankIndicator(index + 1)}
                   </div>
                   {getTrendIndicator(candidate.trend, candidate.previousRank)}
@@ -111,8 +139,8 @@ export function LeaderboardTable({ candidates }: LeaderboardTableProps) {
               <TableCell>
                 <div className="flex items-center gap-3">
                   {candidate.photo ? (
-                    <img 
-                      src={candidate.photo} 
+                    <img
+                      src={candidate.photo}
                       alt={candidate.name}
                       className="h-10 w-10 rounded-full object-cover ring-2 ring-primary/20"
                     />
@@ -125,7 +153,9 @@ export function LeaderboardTable({ candidates }: LeaderboardTableProps) {
                   )}
                   <div>
                     <div className="font-semibold">{candidate.name}</div>
-                    <div className="text-xs text-muted-foreground">{candidate.email}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {candidate.email}
+                    </div>
                   </div>
                 </div>
               </TableCell>
@@ -139,18 +169,28 @@ export function LeaderboardTable({ candidates }: LeaderboardTableProps) {
               </TableCell>
               <TableCell className="text-right">
                 <div className="inline-flex items-center gap-1.5">
-                  <Star className={`h-4 w-4 ${
-                    candidate.matchScore >= 90 ? 'text-yellow-500' : 
-                    candidate.matchScore >= 80 ? 'text-blue-500' : 
-                    candidate.matchScore >= 70 ? 'text-green-500' : 
-                    'text-gray-400'
-                  }`} />
-                  <span className={`font-bold ${
-                    candidate.matchScore >= 90 ? 'text-yellow-500' : 
-                    candidate.matchScore >= 80 ? 'text-blue-500' : 
-                    candidate.matchScore >= 70 ? 'text-green-500' : 
-                    'text-gray-400'
-                  }`}>
+                  <Star
+                    className={`h-4 w-4 ${
+                      candidate.matchScore >= 90
+                        ? "text-yellow-500"
+                        : candidate.matchScore >= 80
+                        ? "text-blue-500"
+                        : candidate.matchScore >= 70
+                        ? "text-green-500"
+                        : "text-gray-400"
+                    }`}
+                  />
+                  <span
+                    className={`font-bold ${
+                      candidate.matchScore >= 90
+                        ? "text-yellow-500"
+                        : candidate.matchScore >= 80
+                        ? "text-blue-500"
+                        : candidate.matchScore >= 70
+                        ? "text-green-500"
+                        : "text-gray-400"
+                    }`}
+                  >
                     {candidate.matchScore}%
                   </span>
                 </div>

@@ -38,8 +38,8 @@ export function CandidateCard({ candidate }: CandidateCardProps) {
         <div className="flex justify-between items-start">
           <div className="flex items-center gap-3">
             {candidate.photo ? (
-              <img 
-                src={candidate.photo} 
+              <img
+                src={candidate.photo}
                 alt={candidate.name}
                 className="h-10 w-10 rounded-full object-cover"
               />
@@ -50,10 +50,16 @@ export function CandidateCard({ candidate }: CandidateCardProps) {
             )}
             <div>
               <h3 className="font-semibold line-clamp-1">{candidate.name}</h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400">{candidate.role}</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                {candidate.role}
+              </p>
             </div>
           </div>
-          <div className={`text-lg font-bold ${getScoreColor(candidate.matchScore)}`}>
+          <div
+            className={`text-lg font-bold ${getScoreColor(
+              candidate.matchScore
+            )}`}
+          >
             {candidate.matchScore}%
           </div>
         </div>
@@ -62,20 +68,24 @@ export function CandidateCard({ candidate }: CandidateCardProps) {
         <div className="mt-4">
           <div className="flex justify-between text-xs mb-1">
             <span>Match Score</span>
-            <span className={getScoreColor(candidate.matchScore)}>{candidate.matchScore}%</span>
+            <span className={getScoreColor(candidate.matchScore)}>
+              {candidate.matchScore}%
+            </span>
           </div>
-          <Progress 
-            value={candidate.matchScore} 
+          <Progress
+            value={candidate.matchScore}
             className="h-2 bg-gray-100 dark:bg-gray-700"
             indicatorClassName={getProgressColor(candidate.matchScore)}
           />
         </div>
-        
+
         <div className="mt-4">
-          <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Top Skills</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+            Top Skills
+          </p>
           <div className="flex flex-wrap gap-1">
             {candidate.skills.slice(0, 3).map((skill, index) => (
-              <span 
+              <span
                 key={index}
                 className="text-xs bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-full"
               >
@@ -89,7 +99,7 @@ export function CandidateCard({ candidate }: CandidateCardProps) {
             )}
           </div>
         </div>
-        
+
         <div className="mt-4 text-xs text-gray-500 dark:text-gray-400">
           <div className="flex items-center gap-1 mb-1">
             <Mail className="h-3 w-3" />
@@ -100,14 +110,20 @@ export function CandidateCard({ candidate }: CandidateCardProps) {
             <span>{candidate.topSkill}</span>
           </div>
         </div>
-        
+
         <div className="mt-4 flex gap-2">
-          <Button variant="outline" size="sm" className="w-full rounded-full" asChild>
-            <Link to={`/candidates/${candidate.id}`}>
-              View Profile
-            </Link>
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full rounded-full"
+            asChild
+          >
+            <Link to={`/candidates/${candidate.id}`}>View Profile</Link>
           </Button>
-          <Button size="sm" className="w-full rounded-full bg-gradient-primary hover:opacity-90">
+          <Button
+            size="sm"
+            className="w-full rounded-full bg-gradient-primary hover:opacity-90"
+          >
             <Calendar className="h-4 w-4 mr-1" />
             Schedule
           </Button>
