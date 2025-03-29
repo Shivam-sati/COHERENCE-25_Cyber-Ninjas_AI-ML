@@ -8,21 +8,55 @@ bp = Blueprint('candidate', __name__, url_prefix='/api/candidates')
 mock_ai = MockAIModel()
 
 def get_candidates_file():
-    return os.path.join(current_app.root_path, 'data', 'candidates.json')
+    """Get the path to the candidates.json file and ensure it exists"""
+    data_dir = os.path.join(current_app.root_path, 'data')
+    candidates_file = os.path.join(data_dir, 'candidates.json')
+    
+    # Create data directory if it doesn't exist
+    os.makedirs(data_dir, exist_ok=True)
+    
+    # Create default candidates.json if it doesn't exist
+    if not os.path.exists(candidates_file):
+        default_candidates = [
+            {
+                'id': 1,
+                'name': 'John Doe',
+                'email': 'john@example.com',
+                'phone': '+1234567890',
+                'role': 'Software Engineer',
+                'matchScore': 85,
+                'skills': ['Python', 'JavaScript', 'React'],
+                'appliedDate': '2024-01-01'
+            },
+            {
+                'id': 2,
+                'name': 'Jane Smith',
+                'email': 'jane@example.com',
+                'phone': '+0987654321',
+                'role': 'Data Scientist',
+                'matchScore': 92,
+                'skills': ['Python', 'Machine Learning', 'SQL'],
+                'appliedDate': '2024-01-02'
+            }
+        ]
+        with open(candidates_file, 'w') as f:
+            json.dump(default_candidates, f, indent=2)
+    
+    return candidates_file
 
 def get_all_candidates():
     """Get all candidates from the mock database"""
     try:
         candidates_file = get_candidates_file()
         if not os.path.exists(candidates_file):
-            return jsonify({'candidates': []}), 200
+            return []
         
         with open(candidates_file, 'r') as f:
             candidates = json.load(f)
-        return jsonify({'candidates': candidates}), 200
+        return candidates
     except Exception as e:
         current_app.logger.error(f"Error getting candidates: {str(e)}")
-        return jsonify({'error': 'Internal server error'}), 500
+        return []
 
 @bp.route('/', methods=['GET'])
 def get_candidates():
@@ -47,26 +81,26 @@ def get_candidates():
             search = search.lower()
             filtered_candidates = [
                 c for c in filtered_candidates if 
-                search in c['name'].lower() or 
-                search in c['email'].lower() or 
-                search in c['role'].lower() or
-                any(search in skill.lower() for skill in c['skills'])
+                search in c.get('name', '').lower() or 
+                search in c.get('email', '').lower() or 
+                search in c.get('role', '').lower() or
+                any(search in skill.lower() for skill in c.get('skills', []))
             ]
         
         # Apply role filter
         if role_filter != 'all':
             filtered_candidates = [
                 c for c in filtered_candidates if 
-                role_filter.lower() in c['role'].lower()
+                role_filter.lower() in c.get('role', '').lower()
             ]
         
         # Sort candidates
         if sort_by == 'name':
-            filtered_candidates.sort(key=lambda c: c['name'], reverse=(sort_order == 'desc'))
+            filtered_candidates.sort(key=lambda c: c.get('name', ''), reverse=(sort_order == 'desc'))
         elif sort_by == 'matchScore':
-            filtered_candidates.sort(key=lambda c: c['matchScore'], reverse=(sort_order == 'desc'))
+            filtered_candidates.sort(key=lambda c: c.get('matchScore', 0), reverse=(sort_order == 'desc'))
         elif sort_by == 'appliedDate':
-            filtered_candidates.sort(key=lambda c: c['appliedDate'], reverse=(sort_order == 'desc'))
+            filtered_candidates.sort(key=lambda c: c.get('appliedDate', ''), reverse=(sort_order == 'desc'))
         
         # Calculate pagination
         total_candidates = len(filtered_candidates)
@@ -89,7 +123,7 @@ def get_candidates():
         
     except Exception as e:
         current_app.logger.error(f"Error getting candidates: {str(e)}")
-        return jsonify({'error': 'Internal server error'}), 500
+        return jsonify({'error': str(e)}), 500
 
 @bp.route('/<candidate_id>', methods=['GET'])
 def get_candidate_details(candidate_id):
@@ -240,9 +274,6 @@ def add_candidate():
         
         candidates_file = get_candidates_file()
         candidates = []
-        
-        # Create data directory if it doesn't exist
-        os.makedirs(os.path.dirname(candidates_file), exist_ok=True)
         
         # Read existing candidates if file exists
         if os.path.exists(candidates_file):

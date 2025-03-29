@@ -1,268 +1,188 @@
-
 import React, { useState, useEffect } from "react";
-import { Header } from "@/components/Header";
-import { Footer } from "@/components/Footer";
-import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Search, Loader2, Trophy, Users, TrendingUp, Award } from "lucide-react";
 import { LeaderboardTable } from "@/components/LeaderboardTable";
-import { Card, CardContent } from "@/components/ui/card";
-import { Award, Filter, Search, Trophy, Users, Star } from "lucide-react";
+import { aiApi } from "@/lib/ai-api";
+import { useToast } from "@/hooks/use-toast";
 
-const Leaderboard = () => {
-  const [searchTerm, setSearchTerm] = useState("");
+export default function Leaderboard() {
+  const { toast } = useToast();
+  const [searchQuery, setSearchQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
-  const [timeFrame, setTimeFrame] = useState("weekly");
-
-  // Mock candidate data - using the same data structure as in other components
-  // Fixed the type issue: all trend values are now explicitly "up", "down", or "neutral"
-  const candidates = [
-    {
-      id: "c1",
-      name: "Alex Johnson",
-      email: "alex.johnson@example.com",
-      role: "Senior Frontend Developer",
-      matchScore: 92,
-      skills: ["React", "TypeScript", "GraphQL", "CSS", "Node.js"],
-      topSkill: "React (4 years)",
-      trend: "up" as const,
-      previousRank: 2
-    },
-    {
-      id: "c2",
-      name: "Sarah Williams",
-      email: "sarah.w@example.com",
-      role: "Product Manager",
-      matchScore: 87,
-      skills: ["Product Strategy", "User Research", "Agile", "Roadmapping"],
-      topSkill: "Product Strategy (5 years)",
-      trend: "up" as const,
-      previousRank: 1
-    },
-    {
-      id: "c3",
-      name: "Miguel Rodriguez",
-      email: "miguel.r@example.com",
-      role: "UX Designer",
-      matchScore: 78,
-      skills: ["Figma", "User Testing", "Wireframing", "UI Design"],
-      topSkill: "Figma (3 years)",
-      trend: "neutral" as const
-    },
-    {
-      id: "c4",
-      name: "Taylor Lee",
-      photo: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=250&auto=format&fit=crop",
-      email: "taylor.lee@example.com",
-      role: "Data Scientist",
-      matchScore: 85,
-      skills: ["Python", "Machine Learning", "SQL", "Data Visualization"],
-      topSkill: "Machine Learning (4 years)",
-      trend: "up" as const,
-      previousRank: 3
-    },
-    {
-      id: "c5",
-      name: "Jordan Smith",
-      email: "jordan.s@example.com",
-      role: "Backend Developer",
-      matchScore: 82,
-      skills: ["Java", "Spring Boot", "Microservices", "PostgreSQL"],
-      topSkill: "Java (6 years)",
-      trend: "neutral" as const
-    },
-    {
-      id: "c6",
-      name: "Casey Wong",
-      email: "casey.w@example.com",
-      role: "Marketing Specialist",
-      matchScore: 75,
-      skills: ["Content Strategy", "SEO", "Social Media", "Analytics"],
-      topSkill: "Content Strategy (3 years)",
-      trend: "down" as const,
-      previousRank: 4
-    },
-    {
-      id: "c7",
-      name: "Jamie Rivera",
-      email: "jamie.r@example.com",
-      role: "DevOps Engineer",
-      matchScore: 89,
-      skills: ["AWS", "Docker", "Kubernetes", "CI/CD", "Terraform"],
-      topSkill: "Kubernetes (4 years)",
-      trend: "neutral" as const
-    },
-    {
-      id: "c8",
-      name: "Blake Thompson",
-      email: "blake.t@example.com",
-      role: "Project Manager",
-      matchScore: 81,
-      skills: ["Scrum", "Jira", "Risk Management", "Stakeholder Management"],
-      topSkill: "Scrum (5 years)",
-      trend: "down" as const,
-      previousRank: 6
-    },
-    {
-      id: "c9",
-      name: "Riley Johnson",
-      email: "riley.j@example.com",
-      role: "Full Stack Developer",
-      matchScore: 95,
-      skills: ["JavaScript", "React", "Node.js", "MongoDB", "GraphQL"],
-      topSkill: "JavaScript (7 years)",
-      trend: "up" as const,
-      previousRank: 4
-    },
-    {
-      id: "c10",
-      name: "Morgan Chen",
-      photo: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=250&auto=format&fit=crop",
-      email: "morgan.c@example.com",
-      role: "AI Specialist",
-      matchScore: 93,
-      skills: ["Python", "TensorFlow", "PyTorch", "NLP", "Computer Vision"],
-      topSkill: "Machine Learning (6 years)",
-      trend: "neutral" as const
-    }
-  ];
-
-  // Filter candidates based on search term and role filter
-  const filteredCandidates = candidates.filter(candidate => {
-    const matchesSearch = 
-      candidate.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      candidate.role.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      candidate.skills.some(skill => skill.toLowerCase().includes(searchTerm.toLowerCase()));
-    
-    const matchesRole = 
-      roleFilter === "all" || 
-      candidate.role.toLowerCase().includes(roleFilter.toLowerCase());
-    
-    return matchesSearch && matchesRole;
+  const [candidates, setCandidates] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [stats, setStats] = useState({
+    totalCandidates: 0,
+    topMatchScore: 0,
+    averageScore: 0,
+    topRole: "",
   });
 
+  const loadCandidates = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const result = await aiApi.getCandidates(1, 100, searchQuery, roleFilter);
+      setCandidates(result.candidates);
+      
+      // Calculate statistics
+      if (result.candidates.length > 0) {
+        const scores: number[] = result.candidates.map((c: any) => c.score);
+        const roles = result.candidates.map((c: any) => c.category);
+        const roleCounts = roles.reduce((acc: any, role: string) => {
+          acc[role] = (acc[role] || 0) + 1;
+          return acc;
+        }, {});
+        
+        const totalScore = scores.reduce((a, b) => a + b, 0);
+        const averageScore = Math.round(totalScore / scores.length);
+        
+        setStats({
+          totalCandidates: result.total_resumes,
+          topMatchScore: Math.max(...scores),
+          averageScore,
+          topRole: Object.entries(roleCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || "N/A",
+        });
+      }
+    } catch (error) {
+      console.error("Failed to load candidates:", error);
+      setError(error instanceof Error ? error.message : "Failed to load candidates");
+      toast({
+        title: "Error",
+        description: "Failed to load candidates. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadCandidates();
+  }, [searchQuery, roleFilter]);
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    loadCandidates();
+  };
+
+  const handleRoleFilterChange = (role: string) => {
+    setRoleFilter(role);
+  };
+
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-900">
-      <Header />
-      <main className="flex-1 pt-24 pb-12">
-        <div className="container mx-auto px-4">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
-            <div>
-              <h1 className="text-3xl font-bold mb-1 flex items-center gap-2">
-                <Trophy className="h-7 w-7 text-primary" />
-                Candidate Leaderboard
-              </h1>
-              <p className="text-muted-foreground">
-                Top performing candidates based on match scores
-              </p>
-            </div>
-            
-            <div className="flex gap-2 mt-4 md:mt-0">
-              <Select 
-                defaultValue="weekly"
-                value={timeFrame}
-                onValueChange={setTimeFrame}
-              >
-                <SelectTrigger className="w-[150px] rounded-full">
-                  <SelectValue placeholder="Time Frame" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="daily">Daily</SelectItem>
-                  <SelectItem value="weekly">Weekly</SelectItem>
-                  <SelectItem value="monthly">Monthly</SelectItem>
-                  <SelectItem value="yearly">Yearly</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
+    <div className="container mx-auto px-4 py-8">
+      <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-2">
+          <h1 className="text-3xl font-bold">Leaderboard</h1>
+          <p className="text-muted-foreground">
+            Track candidate performance and rankings
+          </p>
+        </div>
 
-          {/* Stats Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-            <Card className="bg-white dark:bg-gray-800 shadow-sm border-0">
-              <CardContent className="p-6 flex items-center gap-4">
-                <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
-                  <Trophy className="h-6 w-6 text-primary" />
-                </div>
-                <div>
-                  <div className="text-xl font-bold">
-                    {Math.max(...candidates.map(c => c.matchScore))}%
-                  </div>
-                  <div className="text-sm text-muted-foreground">Top Match Score</div>
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card className="bg-white dark:bg-gray-800 shadow-sm border-0">
-              <CardContent className="p-6 flex items-center gap-4">
-                <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
-                  <Star className="h-6 w-6 text-primary" />
-                </div>
-                <div>
-                  <div className="text-xl font-bold">
-                    {Math.round(candidates.reduce((sum, c) => sum + c.matchScore, 0) / candidates.length)}%
-                  </div>
-                  <div className="text-sm text-muted-foreground">Average Score</div>
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card className="bg-white dark:bg-gray-800 shadow-sm border-0">
-              <CardContent className="p-6 flex items-center gap-4">
-                <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
-                  <Users className="h-6 w-6 text-primary" />
-                </div>
-                <div>
-                  <div className="text-xl font-bold">
-                    {candidates.length}
-                  </div>
-                  <div className="text-sm text-muted-foreground">Total Candidates</div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Card className="p-4">
+            <div className="flex items-center gap-4">
+              <div className="p-2 bg-primary/10 rounded-full">
+                <Users className="h-6 w-6 text-primary" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Total Candidates</p>
+                <p className="text-2xl font-bold">{stats.totalCandidates}</p>
+              </div>
+            </div>
+          </Card>
 
-          {/* Search and Filters */}
-          <div className="mb-8 flex flex-col md:flex-row gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <Input 
-                placeholder="Search candidates by name, skills, or role..." 
-                className="pl-10 rounded-full bg-white dark:bg-gray-800 border-0 shadow-sm"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+          <Card className="p-4">
+            <div className="flex items-center gap-4">
+              <div className="p-2 bg-yellow-100 rounded-full">
+                <Trophy className="h-6 w-6 text-yellow-500" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Top Match Score</p>
+                <p className="text-2xl font-bold">{stats.topMatchScore}%</p>
+              </div>
+            </div>
+          </Card>
+
+          <Card className="p-4">
+            <div className="flex items-center gap-4">
+              <div className="p-2 bg-blue-100 rounded-full">
+                <TrendingUp className="h-6 w-6 text-blue-500" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Average Score</p>
+                <p className="text-2xl font-bold">{stats.averageScore}%</p>
+              </div>
+            </div>
+          </Card>
+
+          <Card className="p-4">
+            <div className="flex items-center gap-4">
+              <div className="p-2 bg-green-100 rounded-full">
+                <Award className="h-6 w-6 text-green-500" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Top Role</p>
+                <p className="text-2xl font-bold">{stats.topRole}</p>
+              </div>
+            </div>
+          </Card>
+        </div>
+
+        <Card className="p-4">
+          <form onSubmit={handleSearch} className="flex flex-col md:flex-row gap-4">
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+              <Input
+                placeholder="Search candidates..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
               />
             </div>
-            <div className="flex gap-3">
-              <Select 
-                defaultValue="all"
+            <div className="flex items-center gap-2">
+              <select
                 value={roleFilter}
-                onValueChange={setRoleFilter}
+                onChange={(e) => handleRoleFilterChange(e.target.value)}
+                className="border rounded-md px-3 py-2"
               >
-                <SelectTrigger className="w-[150px] rounded-full bg-white dark:bg-gray-800 border-0 shadow-sm">
-                  <SelectValue placeholder="Job Role" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Roles</SelectItem>
-                  <SelectItem value="developer">Developers</SelectItem>
-                  <SelectItem value="designer">Designers</SelectItem>
-                  <SelectItem value="product">Product</SelectItem>
-                  <SelectItem value="marketing">Marketing</SelectItem>
-                </SelectContent>
-              </Select>
-              <Button variant="outline" className="rounded-full bg-white dark:bg-gray-800 border-0 shadow-sm">
-                <Filter className="h-4 w-4 mr-2" />
-                Filters
-              </Button>
+                <option value="all">All Roles</option>
+                <option value="Software Engineer">Software Engineer</option>
+                <option value="Data Scientist">Data Scientist</option>
+                <option value="Product Manager">Product Manager</option>
+                <option value="UX Designer">UX Designer</option>
+              </select>
             </div>
-          </div>
+          </form>
+        </Card>
 
-          {/* Leaderboard */}
-          <LeaderboardTable candidates={filteredCandidates} />
-        </div>
-      </main>
-      <Footer />
+        {loading && (
+          <div className="flex justify-center py-4">
+            <Loader2 className="h-6 w-6 animate-spin text-primary" />
+          </div>
+        )}
+
+        {error && (
+          <div className="text-center py-4 text-red-500">
+            {error}
+          </div>
+        )}
+
+        {!loading && candidates.length === 0 && (
+          <div className="text-center py-8 text-muted-foreground">
+            No candidates found. Try adjusting your search or filters.
+          </div>
+        )}
+
+        {!loading && candidates.length > 0 && (
+          <LeaderboardTable candidates={candidates} />
+        )}
+      </div>
     </div>
   );
-};
-
-export default Leaderboard;
+}

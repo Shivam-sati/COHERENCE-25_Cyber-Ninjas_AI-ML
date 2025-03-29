@@ -9,38 +9,16 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import {
-  Award,
-  ChevronUp,
-  ChevronDown,
-  Medal,
-  Star,
-  Trophy,
-  Users,
-} from "lucide-react";
-
-interface Candidate {
-  id: string;
-  name: string;
-  photo?: string;
-  email: string;
-  role: string;
-  matchScore: number;
-  skills: string[];
-  topSkill: string;
-  trend?: "up" | "down" | "neutral";
-  previousRank?: number;
-}
+import { Award, Medal, Star, Trophy, Users } from "lucide-react";
+import { Candidate } from "@/lib/ai-api";
 
 interface LeaderboardTableProps {
   candidates: Candidate[];
 }
 
 export function LeaderboardTable({ candidates }: LeaderboardTableProps) {
-  // Sort candidates by match score in descending order
-  const rankedCandidates = [...candidates].sort(
-    (a, b) => b.matchScore - a.matchScore
-  );
+  // Sort candidates by score in descending order
+  const rankedCandidates = [...candidates].sort((a, b) => b.score - a.score);
 
   // Function to render the rank icon/badge
   const getRankIndicator = (rank: number) => {
@@ -56,27 +34,42 @@ export function LeaderboardTable({ candidates }: LeaderboardTableProps) {
     }
   };
 
-  // Function to render trend indicator
-  const getTrendIndicator = (
-    trend?: "up" | "down" | "neutral",
-    previousRank?: number
-  ) => {
-    if (trend === "up") {
-      return (
-        <div className="flex items-center text-green-500 text-xs">
-          <ChevronUp className="h-3 w-3 mr-1" />
-          <span>{previousRank ? `+${previousRank}` : "+1"}</span>
-        </div>
-      );
-    } else if (trend === "down") {
-      return (
-        <div className="flex items-center text-red-500 text-xs">
-          <ChevronDown className="h-3 w-3 mr-1" />
-          <span>{previousRank ? `-${previousRank}` : "-1"}</span>
-        </div>
-      );
+  // Get score color based on value
+  const getScoreColor = (score: number) => {
+    if (score >= 90) return "text-yellow-500";
+    if (score >= 80) return "text-blue-500";
+    if (score >= 70) return "text-green-500";
+    return "text-gray-400";
+  };
+
+  // Safely get the first character of the filename
+  const getInitial = (filename: string) => {
+    try {
+      return filename.charAt(0).toUpperCase();
+    } catch (error) {
+      console.error("Error getting initial:", error);
+      return "?";
     }
-    return null;
+  };
+
+  // Format email for display
+  const formatEmail = (email: string) => {
+    try {
+      return email.length > 20 ? `${email.substring(0, 20)}...` : email;
+    } catch (error) {
+      console.error("Error formatting email:", error);
+      return "N/A";
+    }
+  };
+
+  // Format phone for display
+  const formatPhone = (phone: string) => {
+    try {
+      return phone.length > 15 ? `${phone.substring(0, 15)}...` : phone;
+    } catch (error) {
+      console.error("Error formatting phone:", error);
+      return "N/A";
+    }
   };
 
   return (
@@ -100,15 +93,15 @@ export function LeaderboardTable({ candidates }: LeaderboardTableProps) {
           <TableRow className="hover:bg-primary/5">
             <TableHead className="w-16 text-center">Rank</TableHead>
             <TableHead>Candidate</TableHead>
-            <TableHead className="hidden md:table-cell">Role</TableHead>
-            <TableHead className="hidden lg:table-cell">Top Skill</TableHead>
+            <TableHead className="hidden md:table-cell">Category</TableHead>
+            <TableHead className="hidden lg:table-cell">Contact</TableHead>
             <TableHead className="text-right">Score</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {rankedCandidates.map((candidate, index) => (
             <TableRow
-              key={candidate.id}
+              key={candidate.filename}
               className={`
                 ${index < 3 ? "bg-primary/5" : ""}
                 hover:bg-primary/5 transition-colors
@@ -133,65 +126,51 @@ export function LeaderboardTable({ candidates }: LeaderboardTableProps) {
                   >
                     {getRankIndicator(index + 1)}
                   </div>
-                  {getTrendIndicator(candidate.trend, candidate.previousRank)}
                 </div>
               </TableCell>
               <TableCell>
                 <div className="flex items-center gap-3">
-                  {candidate.photo ? (
-                    <img
-                      src={candidate.photo}
-                      alt={candidate.name}
-                      className="h-10 w-10 rounded-full object-cover ring-2 ring-primary/20"
-                    />
-                  ) : (
-                    <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center ring-2 ring-primary/20">
-                      <span className="font-medium text-primary">
-                        {candidate.name.charAt(0)}
-                      </span>
-                    </div>
-                  )}
+                  <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center ring-2 ring-primary/20">
+                    <span className="font-medium text-primary">
+                      {getInitial(candidate.filename)}
+                    </span>
+                  </div>
                   <div>
-                    <div className="font-semibold">{candidate.name}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {candidate.email}
+                    <div className="font-semibold truncate max-w-[200px]">
+                      {candidate.filename}
+                    </div>
+                    <div className="text-xs text-muted-foreground truncate max-w-[200px]">
+                      {formatEmail(candidate.email)}
                     </div>
                   </div>
                 </div>
               </TableCell>
               <TableCell className="hidden md:table-cell font-medium text-muted-foreground">
-                {candidate.role}
+                <Badge variant="outline" className="bg-primary/5">
+                  {candidate.category}
+                </Badge>
               </TableCell>
               <TableCell className="hidden lg:table-cell">
-                <Badge variant="outline" className="bg-primary/5 font-medium">
-                  {candidate.topSkill}
-                </Badge>
+                <div className="text-sm">
+                  <div className="truncate max-w-[200px]">
+                    {formatEmail(candidate.email)}
+                  </div>
+                  {candidate.phone && (
+                    <div className="text-muted-foreground truncate max-w-[200px]">
+                      {formatPhone(candidate.phone)}
+                    </div>
+                  )}
+                </div>
               </TableCell>
               <TableCell className="text-right">
                 <div className="inline-flex items-center gap-1.5">
                   <Star
-                    className={`h-4 w-4 ${
-                      candidate.matchScore >= 90
-                        ? "text-yellow-500"
-                        : candidate.matchScore >= 80
-                        ? "text-blue-500"
-                        : candidate.matchScore >= 70
-                        ? "text-green-500"
-                        : "text-gray-400"
-                    }`}
+                    className={`h-4 w-4 ${getScoreColor(candidate.score)}`}
                   />
                   <span
-                    className={`font-bold ${
-                      candidate.matchScore >= 90
-                        ? "text-yellow-500"
-                        : candidate.matchScore >= 80
-                        ? "text-blue-500"
-                        : candidate.matchScore >= 70
-                        ? "text-green-500"
-                        : "text-gray-400"
-                    }`}
+                    className={`font-bold ${getScoreColor(candidate.score)}`}
                   >
-                    {candidate.matchScore}%
+                    {candidate.score}
                   </span>
                 </div>
               </TableCell>

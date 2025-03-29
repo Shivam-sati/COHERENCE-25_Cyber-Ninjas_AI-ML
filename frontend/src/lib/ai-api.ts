@@ -2,51 +2,47 @@ import { useToast } from "@/hooks/use-toast";
 
 // Configuration for the Flask API endpoint
 const API_CONFIG = {
-  // This will be replaced with your actual Flask API endpoint
   baseUrl: import.meta.env.VITE_FLASK_API_URL || "http://localhost:5000",
   endpoints: {
-    analyzeResume: "/api/analyze-resume",
-    matchCandidates: "/api/match-candidates",
-    generateQuestions: "/api/generate-questions",
-    detectBias: "/api/detect-bias",
-    extractSkills: "/api/extract-skills",
+    uploadResume: "/api/resume/upload",
+    getCandidates: "/api/candidates",
+    getTopCandidates: "/api/resume/candidates",
+    getAnalysisHistory: "/api/resume/history",
+    downloadResume: "/api/resume/download",
   },
 };
 
 export interface ResumeAnalysisResult {
-  message: string;
-  data: {
-    content: string;
-    fileName: string;
-    skills?: string[];
-    experience?: {
-      title: string;
-      company: string;
-      duration: string;
-      description: string;
-    }[];
-    education?: {
-      degree: string;
-      institution: string;
-      year: string;
-    }[];
-    matchScore?: number;
-    topSkill?: string;
-  };
+  timestamp: string;
+  job_description: string;
+  total_resumes: number;
+  processed_resumes: number;
+  candidates: Candidate[];
 }
 
 export interface JobMatchResult {
-  matchedCandidates: {
-    id: string;
-    name: string;
-    matchScore: number;
-    skills: string[];
-  }[];
-  biasDetection: {
-    hasBias: boolean;
-    biasType: string;
-    confidence: number;
-  };
+  timestamp: string;
+  job_description: string;
+  total_resumes: number;
+  processed_resumes: number;
+  candidates: Candidate[];
+}
+
+export interface Candidate {
+  extracted: string;
+  filename: string;
+  preprocessed: string;
+  email: string;
+  phone: string;
+  category: string;
+  score: number;
+}
+
+export interface PaginationData {
+  totalCandidates: number;
+  currentPage: number;
+  totalPages: number;
+  hasMore: boolean;
 }
 
 export interface GeneratedQuestionsResult {
@@ -60,16 +56,23 @@ export interface GeneratedQuestionsResult {
  */
 export const aiApi = {
   /**
-   * Analyze a resume file and extract structured information
-   * @param file The resume file to analyze
+   * Upload resumes for analysis
+   * @param files Array of resume files
+   * @param jobDescription Job description for matching
    */
-  async analyzeResume(file: File): Promise<ResumeAnalysisResult> {
-    const formData = new FormData();
-    formData.append("resume", file);
-
+  async uploadResumes(
+    files: File[],
+    jobDescription: string
+  ): Promise<ResumeAnalysisResult> {
     try {
+      const formData = new FormData();
+      files.forEach((file) => {
+        formData.append("files", file);
+      });
+      formData.append("job_description", jobDescription);
+
       const response = await fetch(
-        `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.analyzeResume}`,
+        `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.uploadResume}`,
         {
           method: "POST",
           body: formData,
@@ -77,101 +80,161 @@ export const aiApi = {
       );
 
       if (!response.ok) {
-        throw new Error(`Error analyzing resume: ${response.statusText}`);
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          errorData.error || `Error uploading resumes: ${response.statusText}`
+        );
       }
 
       return await response.json();
     } catch (error) {
-      console.error("Failed to analyze resume:", error);
+      console.error("Failed to upload resumes:", error);
       throw error;
     }
   },
 
   /**
-   * Match job requirements with candidate profiles
-   * @param jobId The ID of the job to match candidates for
+   * Get all candidates with filtering options
    */
-  async matchCandidates(jobId: string): Promise<JobMatchResult> {
+  async getCandidates(
+    page: number = 1,
+    limit: number = 10,
+    search: string = "",
+    roleFilter: string = "all"
+  ): Promise<JobMatchResult> {
     try {
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: limit.toString(),
+        search,
+        role: roleFilter,
+      });
+
       const response = await fetch(
-        `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.matchCandidates}`,
+        `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.getCandidates}?${params}`,
         {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ jobId }),
+          method: "GET",
         }
       );
 
       if (!response.ok) {
-        throw new Error(`Error matching candidates: ${response.statusText}`);
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          errorData.error || `Error getting candidates: ${response.statusText}`
+        );
       }
 
-      return await response.json();
+      const data = await response.json();
+
+      // Transform the data to match our expected structure
+      return {
+        timestamp: data.timestamp || new Date().toISOString(),
+        job_description: data.job_description || "",
+        total_resumes:
+          data.total_resumes || data.pagination?.totalCandidates || 0,
+        processed_resumes:
+          data.processed_resumes || data.candidates?.length || 0,
+        candidates: data.candidates.map((c: any) => ({
+          extracted: c.extracted || "",
+          filename: c.filename || "",
+          preprocessed: c.preprocessed || "",
+          email: c.email || "",
+          phone: c.phone || "",
+          category: c.category || "",
+          score: c.score || 0,
+        })),
+      };
     } catch (error) {
-      console.error("Failed to match candidates:", error);
+      console.error("Failed to get candidates:", error);
       throw error;
     }
   },
 
   /**
-   * Generate interview questions based on resume gaps and job requirements
-   * @param candidateId The ID of the candidate
-   * @param jobId The ID of the job
+   * Get top candidates from all analyses
    */
-  async generateInterviewQuestions(
-    candidateId: string,
-    jobId: string
-  ): Promise<GeneratedQuestionsResult> {
+  async getTopCandidates(limit: number = 10): Promise<JobMatchResult> {
     try {
       const response = await fetch(
-        `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.generateQuestions}`,
+        `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.getTopCandidates}/${limit}`,
         {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ candidateId, jobId }),
+          method: "GET",
         }
       );
 
       if (!response.ok) {
-        throw new Error(`Error generating questions: ${response.statusText}`);
+        throw new Error(`Error getting top candidates: ${response.statusText}`);
       }
 
-      return await response.json();
+      const data = await response.json();
+      return {
+        timestamp: data.timestamp || new Date().toISOString(),
+        job_description: data.job_description || "",
+        total_resumes: data.total_resumes || data.candidates?.length || 0,
+        processed_resumes:
+          data.processed_resumes || data.candidates?.length || 0,
+        candidates: data.candidates.map((c: any) => ({
+          extracted: c.extracted || "",
+          filename: c.filename || "",
+          preprocessed: c.preprocessed || "",
+          email: c.email || "",
+          phone: c.phone || "",
+          category: c.category || "",
+          score: c.score || 0,
+        })),
+      };
     } catch (error) {
-      console.error("Failed to generate interview questions:", error);
+      console.error("Failed to get top candidates:", error);
       throw error;
     }
   },
 
   /**
-   * Extract skills from resume text
-   * @param text The resume text to analyze
+   * Get analysis history
    */
-  async extractSkills(text: string): Promise<string[]> {
+  async getAnalysisHistory(): Promise<ResumeAnalysisResult[]> {
     try {
       const response = await fetch(
-        `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.extractSkills}`,
+        `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.getAnalysisHistory}`,
         {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ text }),
+          method: "GET",
         }
       );
 
       if (!response.ok) {
-        throw new Error(`Error extracting skills: ${response.statusText}`);
+        throw new Error(
+          `Error getting analysis history: ${response.statusText}`
+        );
       }
 
-      const result = await response.json();
-      return result.skills;
+      return await response.json();
     } catch (error) {
-      console.error("Failed to extract skills:", error);
+      console.error("Failed to get analysis history:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Download a candidate's resume
+   */
+  async downloadResume(filename: string): Promise<Blob> {
+    try {
+      const response = await fetch(
+        `${API_CONFIG.baseUrl}${
+          API_CONFIG.endpoints.downloadResume
+        }/${encodeURIComponent(filename)}`,
+        {
+          method: "GET",
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`Error downloading resume: ${response.statusText}`);
+      }
+
+      return await response.blob();
+    } catch (error) {
+      console.error("Failed to download resume:", error);
       throw error;
     }
   },
@@ -194,75 +257,101 @@ export function useAiApi() {
   };
 
   return {
-    async analyzeResume(file: File): Promise<ResumeAnalysisResult | null> {
+    async uploadResumes(
+      files: File[],
+      jobDescription: string
+    ): Promise<ResumeAnalysisResult | null> {
       try {
         toast({
-          title: "Analyzing Resume",
-          description: "AI is processing your resume...",
+          title: "Uploading Resumes",
+          description: "AI is processing your resumes...",
         });
-        const result = await aiApi.analyzeResume(file);
+        const result = await aiApi.uploadResumes(files, jobDescription);
         toast({
-          title: "Analysis Complete",
-          description: `Successfully extracted ${
-            result.data.skills?.length || 0
-          } skills.`,
+          title: "Resumes Uploaded",
+          description: `Successfully processed ${result.processed_resumes} resumes.`,
         });
         return result;
       } catch (error) {
-        return handleApiError(error, "Failed to analyze resume");
+        return handleApiError(error, "Failed to upload resumes");
       }
     },
 
-    async matchCandidates(jobId: string): Promise<JobMatchResult | null> {
+    async getCandidates(
+      page: number = 1,
+      limit: number = 10,
+      search: string = "",
+      roleFilter: string = "all"
+    ): Promise<JobMatchResult | null> {
       try {
         toast({
-          title: "Matching Candidates",
-          description: "AI is finding the best candidates...",
+          title: "Loading Candidates",
+          description: "Fetching candidate data...",
         });
-        const result = await aiApi.matchCandidates(jobId);
-        toast({
-          title: "Matching Complete",
-          description: `Found ${result.matchedCandidates.length} matching candidates.`,
-        });
-        return result;
-      } catch (error) {
-        return handleApiError(error, "Failed to match candidates");
-      }
-    },
-
-    async generateInterviewQuestions(
-      candidateId: string,
-      jobId: string
-    ): Promise<GeneratedQuestionsResult | null> {
-      try {
-        toast({
-          title: "Generating Questions",
-          description: "AI is creating personalized interview questions...",
-        });
-        const result = await aiApi.generateInterviewQuestions(
-          candidateId,
-          jobId
+        const result = await aiApi.getCandidates(
+          page,
+          limit,
+          search,
+          roleFilter
         );
         toast({
-          title: "Questions Ready",
-          description: `Generated ${
-            result.technical.length +
-            result.behavioral.length +
-            result.experience.length
-          } questions.`,
+          title: "Candidates Loaded",
+          description: `Found ${result.candidates.length} candidates.`,
         });
         return result;
       } catch (error) {
-        return handleApiError(error, "Failed to generate interview questions");
+        return handleApiError(error, "Failed to get candidates");
       }
     },
 
-    async extractSkills(text: string): Promise<string[] | null> {
+    async getTopCandidates(limit: number = 10): Promise<JobMatchResult | null> {
       try {
-        const skills = await aiApi.extractSkills(text);
-        return skills;
+        toast({
+          title: "Loading Top Candidates",
+          description: "Fetching top performers...",
+        });
+        const result = await aiApi.getTopCandidates(limit);
+        toast({
+          title: "Top Candidates Loaded",
+          description: `Found ${result.candidates.length} top candidates.`,
+        });
+        return result;
       } catch (error) {
-        return handleApiError(error, "Failed to extract skills from text");
+        return handleApiError(error, "Failed to get top candidates");
+      }
+    },
+
+    async getAnalysisHistory(): Promise<ResumeAnalysisResult[] | null> {
+      try {
+        toast({
+          title: "Loading History",
+          description: "Fetching analysis history...",
+        });
+        const result = await aiApi.getAnalysisHistory();
+        toast({
+          title: "History Loaded",
+          description: `Found ${result.length} historical analyses.`,
+        });
+        return result;
+      } catch (error) {
+        return handleApiError(error, "Failed to get analysis history");
+      }
+    },
+
+    async downloadResume(filename: string): Promise<Blob | null> {
+      try {
+        toast({
+          title: "Downloading Resume",
+          description: "AI is downloading the resume...",
+        });
+        const result = await aiApi.downloadResume(filename);
+        toast({
+          title: "Resume Downloaded",
+          description: `Successfully downloaded the resume.`,
+        });
+        return result;
+      } catch (error) {
+        return handleApiError(error, "Failed to download resume");
       }
     },
   };
