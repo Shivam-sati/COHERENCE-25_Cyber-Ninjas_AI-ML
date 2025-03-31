@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { Badge } from "@/components/ui/badge";
+import { SkillCategoryPieChart } from "@/components/SkillCategoryPieChart";
+import { AnalyticsCard } from "@/components/AnalyticsCard";
 
 interface Candidate {
   extracted: string;
@@ -45,7 +47,6 @@ const Dashboard = () => {
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("overview");
 
-  // Load initial data
   useEffect(() => {
     loadDashboardData();
   }, []);
@@ -101,159 +102,75 @@ const Dashboard = () => {
     }
   };
 
-  const getScoreColor = (score: number) => {
-    if (score >= 90) return "text-yellow-500";
-    if (score >= 80) return "text-blue-500";
-    if (score >= 70) return "text-green-500";
-    return "text-gray-400";
-  };
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex flex-col">
-        <Header />
-        <main className="flex-1 pt-24 pb-12 flex items-center justify-center">
-          <div className="text-center">
-            <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-4" />
-            <p className="text-muted-foreground">Loading dashboard data...</p>
-          </div>
-        </main>
-        <Footer />
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-screen flex flex-col">
-        <Header />
-        <main className="flex-1 pt-24 pb-12 flex items-center justify-center">
-          <div className="text-center">
-            <p className="text-red-500 mb-4">{error}</p>
-            <Button onClick={loadDashboardData}>Try Again</Button>
-          </div>
-        </main>
-        <Footer />
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen bg-background">
       <Header />
-      <main className="flex-1 pt-24 pb-12">
-        <div className="container mx-auto px-4">
-          <div className="flex flex-col gap-4 mb-8">
+      <main className="container mx-auto px-4 py-8">
+        <div className="flex flex-col gap-6">
+          <div className="flex flex-col gap-2">
             <h1 className="text-3xl font-bold">Dashboard</h1>
             <p className="text-muted-foreground">
-              Overview of your recruitment analytics
+              Overview of your candidate pool and resume analysis
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-            <Card className="p-6">
-              <div className="flex items-center gap-4">
-                <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
-                  <Users className="h-6 w-6 text-primary" />
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Total Candidates</p>
-                  <h3 className="text-2xl font-bold">{analytics.totalCandidates}</h3>
-                </div>
+          {isLoading ? (
+            <div className="flex justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          ) : error ? (
+            <div className="text-center py-8 text-red-500">{error}</div>
+          ) : (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <AnalyticsCard
+                  title="Total Candidates"
+                  value={analytics.totalCandidates}
+                  icon={<Users className="h-4 w-4" />}
+                  description="Total candidates analyzed"
+                />
+                <AnalyticsCard
+                  title="Total Resumes"
+                  value={analytics.totalResumes}
+                  icon={<FileText className="h-4 w-4" />}
+                  description="Total resumes processed"
+                />
+                <AnalyticsCard
+                  title="Average Match Score"
+                  value={`${analytics.averageScore}%`}
+                  icon={<TrendingUp className="h-4 w-4" />}
+                  description="Average candidate match score"
+                />
+                <AnalyticsCard
+                  title="Top Match Score"
+                  value={`${analytics.topScore}%`}
+                  icon={<Star className="h-4 w-4" />}
+                  description="Highest candidate match score"
+                />
               </div>
-            </Card>
 
-            <Card className="p-6">
-              <div className="flex items-center gap-4">
-                <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
-                  <FileText className="h-6 w-6 text-primary" />
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Total Resumes</p>
-                  <h3 className="text-2xl font-bold">{analytics.totalResumes}</h3>
-                </div>
-              </div>
-            </Card>
-
-            <Card className="p-6">
-              <div className="flex items-center gap-4">
-                <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
-                  <Briefcase className="h-6 w-6 text-primary" />
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Active Jobs</p>
-                  <h3 className="text-2xl font-bold">{analytics.activeJobs}</h3>
-                </div>
-              </div>
-            </Card>
-
-            <Card className="p-6">
-              <div className="flex items-center gap-4">
-                <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
-                  <TrendingUp className="h-6 w-6 text-primary" />
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Average Score</p>
-                  <h3 className="text-2xl font-bold">{analytics.averageScore}</h3>
-                </div>
-              </div>
-            </Card>
-          </div>
-
-          <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList>
-              <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="top">Top Candidates</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="overview" className="space-y-6">
-              <Card className="p-6">
-                <h2 className="text-xl font-semibold mb-4">Category Distribution</h2>
-                <div className="flex flex-wrap gap-2">
-                  {Object.entries(analytics.categories).map(([category, count]) => (
-                    <Badge key={category} variant="outline" className="bg-primary/5">
-                      {category}: {count}
-                    </Badge>
-                  ))}
-                </div>
-              </Card>
-
-              <Card className="p-6">
-                <h2 className="text-xl font-semibold mb-4">Performance Metrics</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Highest Score</p>
-                    <div className="flex items-center gap-2">
-                      <Star className={`h-5 w-5 ${getScoreColor(analytics.topScore)}`} />
-                      <span className={`text-2xl font-bold ${getScoreColor(analytics.topScore)}`}>
-                        {analytics.topScore}
-                      </span>
-                    </div>
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <Card className="col-span-2 p-6">
+                  <h3 className="text-lg font-semibold mb-4">Top Candidates</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {candidates.map((candidate) => (
+                      <CandidateCard
+                        key={candidate.filename}
+                        candidate={candidate}
+                        onSelect={() => {}}
+                        selected={false}
+                      />
+                    ))}
                   </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Average Score</p>
-                    <div className="flex items-center gap-2">
-                      <Star className={`h-5 w-5 ${getScoreColor(analytics.averageScore)}`} />
-                      <span className={`text-2xl font-bold ${getScoreColor(analytics.averageScore)}`}>
-                        {analytics.averageScore}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </Card>
-            </TabsContent>
+                </Card>
 
-            <TabsContent value="top" className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {candidates.map((candidate) => (
-                  <CandidateCard
-                    key={candidate.filename}
-                    candidate={candidate}
-                  />
-                ))}
+                <Card className="p-6">
+                  <h3 className="text-lg font-semibold mb-4">Category Distribution</h3>
+                  <SkillCategoryPieChart data={analytics.categories} />
+                </Card>
               </div>
-            </TabsContent>
-          </Tabs>
+            </>
+          )}
         </div>
       </main>
       <Footer />

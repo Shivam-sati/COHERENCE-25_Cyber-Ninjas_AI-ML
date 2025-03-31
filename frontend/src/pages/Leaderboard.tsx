@@ -5,8 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Search, Loader2, Trophy, Users, TrendingUp, Award } from "lucide-react";
 import { LeaderboardTable } from "@/components/LeaderboardTable";
+import { AnalyticsCard } from "@/components/AnalyticsCard";
 import { aiApi } from "@/lib/ai-api";
 import { useToast } from "@/hooks/use-toast";
+import { Header } from "@/components/Header";
+import { Footer } from "@/components/Footer";
 
 export default function Leaderboard() {
   const { toast } = useToast();
@@ -20,6 +23,7 @@ export default function Leaderboard() {
     topMatchScore: 0,
     averageScore: 0,
     topRole: "",
+    roleDistribution: {} as Record<string, number>
   });
 
   const loadCandidates = async () => {
@@ -33,7 +37,7 @@ export default function Leaderboard() {
       if (result.candidates.length > 0) {
         const scores: number[] = result.candidates.map((c: any) => c.score);
         const roles = result.candidates.map((c: any) => c.category);
-        const roleCounts = roles.reduce((acc: any, role: string) => {
+        const roleCounts: Record<string, number> = roles.reduce((acc: Record<string, number>, role: string) => {
           acc[role] = (acc[role] || 0) + 1;
           return acc;
         }, {});
@@ -41,11 +45,17 @@ export default function Leaderboard() {
         const totalScore = scores.reduce((a, b) => a + b, 0);
         const averageScore = Math.round(totalScore / scores.length);
         
+        // Sort by count to find top role
+        const sortedRoles = Object.entries(roleCounts)
+          .sort(([, countA], [, countB]) => countB - countA);
+        const topRole = sortedRoles.length > 0 ? sortedRoles[0][0] : "N/A";
+        
         setStats({
           totalCandidates: result.total_resumes,
           topMatchScore: Math.max(...scores),
           averageScore,
-          topRole: Object.entries(roleCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || "N/A",
+          topRole,
+          roleDistribution: roleCounts
         });
       }
     } catch (error) {
@@ -75,114 +85,95 @@ export default function Leaderboard() {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="flex flex-col gap-6">
-        <div className="flex flex-col gap-2">
-          <h1 className="text-3xl font-bold">Leaderboard</h1>
-          <p className="text-muted-foreground">
-            Track candidate performance and rankings
-          </p>
+    <div className="min-h-screen bg-background">
+      <Header />
+      <main className="container mx-auto px-4 py-8">
+        <div className="flex flex-col gap-6">
+          <div className="flex flex-col gap-2">
+            <h1 className="text-3xl font-bold">Leaderboard</h1>
+            <p className="text-muted-foreground">
+              Track candidate performance and rankings
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <AnalyticsCard
+              title="Total Candidates"
+              value={stats.totalCandidates}
+              icon={<Users className="h-4 w-4" />}
+              description="All candidates in system"
+            />
+            <AnalyticsCard
+              title="Top Match Score"
+              value={`${stats.topMatchScore}%`}
+              icon={<Trophy className="h-4 w-4" />}
+              description="Highest match percentage"
+            />
+            <AnalyticsCard
+              title="Average Score"
+              value={`${stats.averageScore}%`}
+              icon={<TrendingUp className="h-4 w-4" />}
+              description="Average match score"
+            />
+            <AnalyticsCard
+              title="Top Role"
+              value={stats.topRole}
+              icon={<Award className="h-4 w-4" />}
+              description="Most common candidate role"
+            />
+          </div>
+
+          <Card className="p-4">
+            <div className="flex flex-col md:flex-row gap-4 mb-6">
+              <form onSubmit={handleSearch} className="flex-1">
+                <div className="relative">
+                  <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search candidates..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-8"
+                  />
+                </div>
+              </form>
+              <div className="flex gap-2">
+                {Object.keys(stats.roleDistribution).map((role) => (
+                  <Badge
+                    key={role}
+                    variant={roleFilter === role ? "default" : "outline"}
+                    className="cursor-pointer"
+                    onClick={() => handleRoleFilterChange(role)}
+                  >
+                    {role} ({stats.roleDistribution[role]})
+                  </Badge>
+                ))}
+                <Badge
+                  variant={roleFilter === "all" ? "default" : "outline"}
+                  className="cursor-pointer"
+                  onClick={() => handleRoleFilterChange("all")}
+                >
+                  All
+                </Badge>
+              </div>
+            </div>
+
+            {loading ? (
+              <div className="flex justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              </div>
+            ) : error ? (
+              <div className="text-center py-8 text-red-500">{error}</div>
+            ) : candidates.length > 0 ? (
+              <LeaderboardTable candidates={candidates} />
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                No candidates found
+              </div>
+            )}
+          </Card>
         </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card className="p-4">
-            <div className="flex items-center gap-4">
-              <div className="p-2 bg-primary/10 rounded-full">
-                <Users className="h-6 w-6 text-primary" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Total Candidates</p>
-                <p className="text-2xl font-bold">{stats.totalCandidates}</p>
-              </div>
-            </div>
-          </Card>
-
-          <Card className="p-4">
-            <div className="flex items-center gap-4">
-              <div className="p-2 bg-yellow-100 rounded-full">
-                <Trophy className="h-6 w-6 text-yellow-500" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Top Match Score</p>
-                <p className="text-2xl font-bold">{stats.topMatchScore}%</p>
-              </div>
-            </div>
-          </Card>
-
-          <Card className="p-4">
-            <div className="flex items-center gap-4">
-              <div className="p-2 bg-blue-100 rounded-full">
-                <TrendingUp className="h-6 w-6 text-blue-500" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Average Score</p>
-                <p className="text-2xl font-bold">{stats.averageScore}%</p>
-              </div>
-            </div>
-          </Card>
-
-          <Card className="p-4">
-            <div className="flex items-center gap-4">
-              <div className="p-2 bg-green-100 rounded-full">
-                <Award className="h-6 w-6 text-green-500" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Top Role</p>
-                <p className="text-2xl font-bold">{stats.topRole}</p>
-              </div>
-            </div>
-          </Card>
-        </div>
-
-        <Card className="p-4">
-          <form onSubmit={handleSearch} className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-              <Input
-                placeholder="Search candidates..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-            <div className="flex items-center gap-2">
-              <select
-                value={roleFilter}
-                onChange={(e) => handleRoleFilterChange(e.target.value)}
-                className="border rounded-md px-3 py-2"
-              >
-                <option value="all">All Roles</option>
-                <option value="Software Engineer">Software Engineer</option>
-                <option value="Data Scientist">Data Scientist</option>
-                <option value="Product Manager">Product Manager</option>
-                <option value="UX Designer">UX Designer</option>
-              </select>
-            </div>
-          </form>
-        </Card>
-
-        {loading && (
-          <div className="flex justify-center py-4">
-            <Loader2 className="h-6 w-6 animate-spin text-primary" />
-          </div>
-        )}
-
-        {error && (
-          <div className="text-center py-4 text-red-500">
-            {error}
-          </div>
-        )}
-
-        {!loading && candidates.length === 0 && (
-          <div className="text-center py-8 text-muted-foreground">
-            No candidates found. Try adjusting your search or filters.
-          </div>
-        )}
-
-        {!loading && candidates.length > 0 && (
-          <LeaderboardTable candidates={candidates} />
-        )}
-      </div>
+      </main>
+      <Footer />
     </div>
   );
 }

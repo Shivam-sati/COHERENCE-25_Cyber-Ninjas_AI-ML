@@ -18,6 +18,14 @@ export interface ResumeAnalysisResult {
   total_resumes: number;
   processed_resumes: number;
   candidates: Candidate[];
+  file_errors?: FileError[];
+  cleanup_warnings?: string[];
+  error?: string;
+}
+
+export interface FileError {
+  filename: string;
+  error: string;
 }
 
 export interface JobMatchResult {
@@ -32,8 +40,8 @@ export interface Candidate {
   extracted: string;
   filename: string;
   preprocessed: string;
-  email: string;
-  phone: string;
+  email: string | null;
+  phone: string | null;
   category: string;
   score: number;
 }
@@ -70,7 +78,7 @@ export const aiApi = {
         formData.append("files", file);
       });
       formData.append("job_description", jobDescription);
-
+      
       const response = await fetch(
         `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.uploadResume}`,
         {
@@ -79,14 +87,16 @@ export const aiApi = {
         }
       );
 
+      const data = await response.json();
+      
+      // Handle non-ok responses that include JSON
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
         throw new Error(
-          errorData.error || `Error uploading resumes: ${response.statusText}`
+          data.error || `Error uploading resumes: ${response.statusText}`
         );
       }
-
-      return await response.json();
+      
+      return data;
     } catch (error) {
       console.error("Failed to upload resumes:", error);
       throw error;
@@ -109,7 +119,7 @@ export const aiApi = {
         search,
         role: roleFilter,
       });
-
+      
       const response = await fetch(
         `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.getCandidates}?${params}`,
         {
@@ -123,9 +133,9 @@ export const aiApi = {
           errorData.error || `Error getting candidates: ${response.statusText}`
         );
       }
-
+      
       const data = await response.json();
-
+      
       // Transform the data to match our expected structure
       return {
         timestamp: data.timestamp || new Date().toISOString(),
@@ -134,15 +144,15 @@ export const aiApi = {
           data.total_resumes || data.pagination?.totalCandidates || 0,
         processed_resumes:
           data.processed_resumes || data.candidates?.length || 0,
-        candidates: data.candidates.map((c: any) => ({
+        candidates: Array.isArray(data.candidates) ? data.candidates.map((c: any) => ({
           extracted: c.extracted || "",
           filename: c.filename || "",
           preprocessed: c.preprocessed || "",
-          email: c.email || "",
-          phone: c.phone || "",
-          category: c.category || "",
-          score: c.score || 0,
-        })),
+          email: c.email || null,
+          phone: c.phone || null,
+          category: c.category || "Unknown",
+          score: typeof c.score === 'number' ? c.score : 0,
+        })) : [],
       };
     } catch (error) {
       console.error("Failed to get candidates:", error);
@@ -163,10 +173,18 @@ export const aiApi = {
       );
 
       if (!response.ok) {
-        throw new Error(`Error getting top candidates: ${response.statusText}`);
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          errorData.error || `Error getting top candidates: ${response.statusText}`
+        );
       }
-
+      
       const data = await response.json();
+      
+      if (!data || !data.candidates || !Array.isArray(data.candidates)) {
+        throw new Error("Invalid response data format");
+      }
+      
       return {
         timestamp: data.timestamp || new Date().toISOString(),
         job_description: data.job_description || "",
@@ -177,10 +195,10 @@ export const aiApi = {
           extracted: c.extracted || "",
           filename: c.filename || "",
           preprocessed: c.preprocessed || "",
-          email: c.email || "",
-          phone: c.phone || "",
-          category: c.category || "",
-          score: c.score || 0,
+          email: c.email || null,
+          phone: c.phone || null,
+          category: c.category || "Unknown",
+          score: typeof c.score === 'number' ? c.score : 0,
         })),
       };
     } catch (error) {
@@ -202,12 +220,19 @@ export const aiApi = {
       );
 
       if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
         throw new Error(
-          `Error getting analysis history: ${response.statusText}`
+          errorData.error || `Error getting analysis history: ${response.statusText}`
         );
       }
-
-      return await response.json();
+      
+      const data = await response.json();
+      
+      if (!Array.isArray(data)) {
+        return [];
+      }
+      
+      return data;
     } catch (error) {
       console.error("Failed to get analysis history:", error);
       throw error;
@@ -229,9 +254,12 @@ export const aiApi = {
       );
 
       if (!response.ok) {
-        throw new Error(`Error downloading resume: ${response.statusText}`);
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          errorData.error || `Error downloading resume: ${response.statusText}`
+        );
       }
-
+      
       return await response.blob();
     } catch (error) {
       console.error("Failed to download resume:", error);
@@ -248,11 +276,13 @@ export function useAiApi() {
 
   const handleApiError = (error: unknown, fallbackMessage: string) => {
     console.error(fallbackMessage, error);
+    
     toast({
       title: "Error",
       description: error instanceof Error ? error.message : fallbackMessage,
       variant: "destructive",
     });
+    
     return null;
   };
 
@@ -264,13 +294,25 @@ export function useAiApi() {
       try {
         toast({
           title: "Uploading Resumes",
-          description: "AI is processing your resumes...",
+          description: "Processing your resumes...",
         });
+        
         const result = await aiApi.uploadResumes(files, jobDescription);
-        toast({
-          title: "Resumes Uploaded",
-          description: `Successfully processed ${result.processed_resumes} resumes.`,
-        });
+        
+        // Check for partial success (some files had errors)
+        if (result.file_errors && result.file_errors.length > 0) {
+          toast({
+            title: "Partial Success",
+            description: `Processed ${result.processed_resumes} resumes. ${result.file_errors.length} files had errors.`,
+            variant: "destructive", // Changed from 'warning' to 'destructive'
+          });
+        } else {
+          toast({
+            title: "Resumes Uploaded",
+            description: `Successfully processed ${result.processed_resumes} resumes.`,
+          });
+        }
+        
         return result;
       } catch (error) {
         return handleApiError(error, "Failed to upload resumes");
@@ -288,16 +330,27 @@ export function useAiApi() {
           title: "Loading Candidates",
           description: "Fetching candidate data...",
         });
+        
         const result = await aiApi.getCandidates(
           page,
           limit,
           search,
           roleFilter
         );
-        toast({
-          title: "Candidates Loaded",
-          description: `Found ${result.candidates.length} candidates.`,
-        });
+        
+        if (result.candidates && result.candidates.length > 0) {
+          toast({
+            title: "Candidates Loaded",
+            description: `Found ${result.candidates.length} candidates.`,
+          });
+        } else {
+          toast({
+            title: "No Candidates Found",
+            description: "Try adjusting your search criteria.",
+            variant: "default", // Changed from 'warning' to 'default'
+          });
+        }
+        
         return result;
       } catch (error) {
         return handleApiError(error, "Failed to get candidates");
@@ -310,11 +363,22 @@ export function useAiApi() {
           title: "Loading Top Candidates",
           description: "Fetching top performers...",
         });
+        
         const result = await aiApi.getTopCandidates(limit);
-        toast({
-          title: "Top Candidates Loaded",
-          description: `Found ${result.candidates.length} top candidates.`,
-        });
+        
+        if (result.candidates && result.candidates.length > 0) {
+          toast({
+            title: "Top Candidates Loaded",
+            description: `Found ${result.candidates.length} top candidates.`,
+          });
+        } else {
+          toast({
+            title: "No Top Candidates",
+            description: "Try uploading and analyzing resumes first.",
+            variant: "default", // Changed from 'warning' to 'default'
+          });
+        }
+        
         return result;
       } catch (error) {
         return handleApiError(error, "Failed to get top candidates");
@@ -327,11 +391,22 @@ export function useAiApi() {
           title: "Loading History",
           description: "Fetching analysis history...",
         });
+        
         const result = await aiApi.getAnalysisHistory();
-        toast({
-          title: "History Loaded",
-          description: `Found ${result.length} historical analyses.`,
-        });
+        
+        if (result && result.length > 0) {
+          toast({
+            title: "History Loaded",
+            description: `Found ${result.length} historical analyses.`,
+          });
+        } else {
+          toast({
+            title: "No Analysis History",
+            description: "Try analyzing resumes to create history.",
+            variant: "default", // Changed from 'warning' to 'default'
+          });
+        }
+        
         return result;
       } catch (error) {
         return handleApiError(error, "Failed to get analysis history");
@@ -342,13 +417,16 @@ export function useAiApi() {
       try {
         toast({
           title: "Downloading Resume",
-          description: "AI is downloading the resume...",
+          description: "Downloading the resume...",
         });
+        
         const result = await aiApi.downloadResume(filename);
+        
         toast({
           title: "Resume Downloaded",
           description: `Successfully downloaded the resume.`,
         });
+        
         return result;
       } catch (error) {
         return handleApiError(error, "Failed to download resume");

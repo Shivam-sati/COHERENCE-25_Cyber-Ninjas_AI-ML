@@ -93,6 +93,15 @@ class FileProcessor:
             filename = secure_filename(file.filename)
             file_path = os.path.join(self.upload_folder, filename)
             
+            # Handle duplicate filenames by appending a counter
+            base_name = os.path.splitext(filename)[0]
+            ext = os.path.splitext(filename)[1]
+            counter = 1
+            while os.path.exists(file_path):
+                new_filename = f"{base_name}_{counter}{ext}"
+                file_path = os.path.join(self.upload_folder, new_filename)
+                counter += 1
+            
             # Save file
             file.save(file_path)
             self.logger.info(f"File saved successfully: {file_path}")
@@ -101,7 +110,7 @@ class FileProcessor:
             
         except Exception as e:
             self.logger.error(f"Error saving file: {str(e)}")
-            return False, None, "Error saving file"
+            return False, None, f"Error saving file: {str(e)}"
     
     def read_file_content(self, file_path: str) -> Tuple[bool, Optional[str], Optional[str]]:
         """Read content from saved file"""
@@ -109,20 +118,32 @@ class FileProcessor:
             if not os.path.exists(file_path):
                 return False, None, "File not found"
             
+            # Handle case where file has no extension
+            if '.' not in file_path:
+                return False, None, "Unknown file type (no extension)"
+                
             file_extension = file_path.rsplit('.', 1)[1].lower()
             
             if file_extension == 'pdf':
                 return self._read_pdf(file_path)
             elif file_extension in ['doc', 'docx']:
                 return self._read_docx(file_path)
-            else:  # txt
-                with open(file_path, 'r', encoding='utf-8') as f:
-                    content = f.read()
-                return True, content, None
+            elif file_extension == 'txt':  # explicitly check for txt
+                try:
+                    with open(file_path, 'r', encoding='utf-8') as f:
+                        content = f.read()
+                    return True, content, None
+                except UnicodeDecodeError:
+                    # Try with a different encoding if utf-8 fails
+                    with open(file_path, 'r', encoding='latin-1') as f:
+                        content = f.read()
+                    return True, content, None
+            else:
+                return False, None, f"Unsupported file type: {file_extension}"
             
         except Exception as e:
             self.logger.error(f"Error reading file: {str(e)}")
-            return False, None, "Error reading file"
+            return False, None, f"Error reading file: {str(e)}"
     
     def _read_pdf(self, file_path: str) -> Tuple[bool, Optional[str], Optional[str]]:
         """Read content from PDF file"""
@@ -130,14 +151,25 @@ class FileProcessor:
             reader = PdfReader(file_path)
             content = []
             
+            # Check if PDF has pages
+            if len(reader.pages) == 0:
+                return False, None, "PDF file has no pages"
+                
             for page in reader.pages:
-                content.append(page.extract_text())
+                text = page.extract_text()
+                if text:  # Only append if text was actually extracted
+                    content.append(text)
             
+            # If no content was extracted from any page
+            if not content:
+                self.logger.warning(f"No text content extracted from PDF: {file_path}")
+                return False, None, "Could not extract text from PDF file"
+                
             return True, '\n'.join(content), None
             
         except Exception as e:
             self.logger.error(f"Error reading PDF: {str(e)}")
-            return False, None, "Error reading PDF file"
+            return False, None, f"Error reading PDF file: {str(e)}"
     
     def _read_docx(self, file_path: str) -> Tuple[bool, Optional[str], Optional[str]]:
         """Read content from DOCX file"""
@@ -146,13 +178,19 @@ class FileProcessor:
             content = []
             
             for paragraph in doc.paragraphs:
-                content.append(paragraph.text)
+                if paragraph.text.strip():  # Only append non-empty paragraphs
+                    content.append(paragraph.text)
             
+            # If no content was extracted
+            if not content:
+                self.logger.warning(f"No text content extracted from DOCX: {file_path}")
+                return False, None, "Could not extract text from DOCX file"
+                
             return True, '\n'.join(content), None
             
         except Exception as e:
             self.logger.error(f"Error reading DOCX: {str(e)}")
-            return False, None, "Error reading DOCX file"
+            return False, None, f"Error reading DOCX file: {str(e)}"
     
     def cleanup_file(self, file_path: str) -> bool:
         """Remove processed file"""
@@ -164,4 +202,4 @@ class FileProcessor:
             return False
         except Exception as e:
             self.logger.error(f"Error removing file: {str(e)}")
-            return False 
+            return False

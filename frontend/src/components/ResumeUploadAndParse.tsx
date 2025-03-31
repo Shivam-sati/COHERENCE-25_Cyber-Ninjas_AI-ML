@@ -37,10 +37,15 @@ export function ResumeUploadAndParse({
         return isValid;
       });
 
-      setFiles((prev) => [...prev, ...validFiles]);
-      onFilesSelected([...files, ...validFiles]);
+      // Fix: Use functional update to ensure we're working with the latest state
+      setFiles((prevFiles) => {
+        const updatedFiles = [...prevFiles, ...validFiles];
+        // Update parent component with the new files array
+        onFilesSelected(updatedFiles);
+        return updatedFiles;
+      });
     },
-    [files, onFilesSelected, toast]
+    [onFilesSelected, toast]
   );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -55,8 +60,13 @@ export function ResumeUploadAndParse({
   });
 
   const removeFile = (fileToRemove: File) => {
-    setFiles(files.filter((file) => file !== fileToRemove));
-    onFilesSelected(files.filter((file) => file !== fileToRemove));
+    // Fix: Use functional update to ensure we're working with the latest state
+    setFiles((prevFiles) => {
+      const updatedFiles = prevFiles.filter((file) => file !== fileToRemove);
+      // Update parent component with the new files array
+      onFilesSelected(updatedFiles);
+      return updatedFiles;
+    });
   };
 
   return (
@@ -81,7 +91,6 @@ export function ResumeUploadAndParse({
           Supported formats: PDF, DOCX, DOC
         </p>
       </div>
-
       {files.length > 0 && (
         <div className="mt-6 space-y-4">
           <h3 className="font-medium">Selected Files:</h3>
@@ -105,7 +114,6 @@ export function ResumeUploadAndParse({
           </div>
         </div>
       )}
-
       {isProcessing && (
         <div className="mt-6 flex items-center justify-center text-primary">
           <Loader2 className="h-5 w-5 animate-spin mr-2" />
